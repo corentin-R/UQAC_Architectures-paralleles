@@ -13,7 +13,7 @@ Calculs de multiplication matricielle, de tri par fusion et d'opérations sur de
 ```bash
 ./compileAll.sh
 ```
-et pour lancer l'analyse dutri par fusion:
+pour lancer l'analyse du tri par fusion:
 ```bash
 ./script_d2.sh
 ```
