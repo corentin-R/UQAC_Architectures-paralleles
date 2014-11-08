@@ -1,5 +1,5 @@
 #Architectures Parallèles
-liste des différenys devoirs effetuées durant ce cours avec Adrien Cambillau.
+liste des différents devoirs effetuées durant ce cours avec Adrien Cambillau.
 
 ##Devoir 1
 Calcul de la suite de Fibonacci en langage C avec et sans threads, utilisation de la librairie "pthread".
@@ -10,6 +10,7 @@ Fibonacci.c -o Fibonacci -lpthread
 
 ##Devoir 2
 Calculs de multiplication matricielle, de tri par fusion et d'opérations sur des tableaux en langage C avec la librairie OpenMP.
+pour compiler:
 ```bash
 ./compileAll.sh
 ```
