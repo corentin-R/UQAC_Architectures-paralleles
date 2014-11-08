@@ -19,4 +19,10 @@ pour lancer l'analyse du tri par fusion:
 ./script_d2.sh
 ```
 
+##Devoir 3
+tri d'un tableau de taille n en utilisant le cluster dim_linuxmpi de l'UQAC
+pour compiler sur toutes les machines:
+```bash
+./compile_dim_linuxmpi.sh
+```
 

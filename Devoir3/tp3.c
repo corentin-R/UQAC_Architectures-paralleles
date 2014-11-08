@@ -2,7 +2,6 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-
 main()
 {
     printf("Hello World c'est cool\n");
