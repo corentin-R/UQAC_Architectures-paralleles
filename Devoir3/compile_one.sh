@@ -1,11 +1,13 @@
 #!/bin/bash
-
 cd TP3
 
 echo "comilation"
-gcc tp3.c -o tp3
+#mpicc tp3.c -o prog.exe
+mpicc tp3.c -o prog.exe
 
-echo "execution"
-./tp3
+
+
+#echo "execution"
+#./prog.exe
 
 exit 0
