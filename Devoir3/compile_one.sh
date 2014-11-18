@@ -1,9 +1,9 @@
 #!/bin/bash
+#lamboot
 cd TP3
-
-echo "comilation"
-#mpicc tp3.c -o prog.exe
+echo "compilation"
 mpicc tp3.c -o prog.exe
+	
 
 
 
