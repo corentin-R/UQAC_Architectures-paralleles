@@ -1,2 +1,2 @@
 cd TP3
-mpirun -np 3 prog.exe 100000
+mpirun -np 5 prog.exe 4096

@@ -11,7 +11,7 @@ do
 	echo -e " "
 done
 
-ssh 8inf856-16@dim-linuxmpi2 "bash -s" < execute.sh
+ssh 8inf856-16@dim-linuxmpi3 "bash -s" < execute.sh
 
 
 exit 0
