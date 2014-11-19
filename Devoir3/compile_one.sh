@@ -2,7 +2,7 @@
 #lamboot
 cd TP3
 echo "compilation"
-mpicc -o prog.exe -fopenmp tp3.c
+mpicc -o prog.exe tp3.c
 	
 
 

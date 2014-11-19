@@ -39,7 +39,7 @@ void remplirTABrand( struct tableau T);
 
 struct tableau TD_init(int n);
 int TD_get(struct tableau T, int i, int *x);
-int TD_put(struct tableau T, int i, int x);
+int TD_put(struct tableau T, int i, int *x);
 int TD_somme(struct tableau T); // Retourne la somme des  éléments de T .
 void TD_afficher(struct tableau T,int i, int j); // Affiche dans l’ordre les  éléments i (i ≤ j) du tableau T .
 void afficherNomMachine();
@@ -48,7 +48,7 @@ void triFusionParallele(int * TAB, int n);
 void fusion(int * U, int taille_U, int * V, int taille_V , int * T);
 void afficherTAB(int* TAB, int n);
 
-
+void getPartTab(struct tableau T, int debut, int fin);
 
 ///////////////////// MAIN ///////////////////////////////////////////////////////////////////////////////////
 
@@ -68,12 +68,7 @@ int main (int argc, char **argv)
     MPI_Group comm_group, group;
     comm = MPI_COMM_WORLD;
 
-
-    //if (!rank)
-
-
     struct tableau T;
-    
 
     if (rank == 0) {
         /* Only rank 0 has a nonzero buffer at start */
@@ -85,52 +80,40 @@ int main (int argc, char **argv)
         /* Others only retrieve, so these windows can be size 0 */
         MPI_Win_create(T.tab,n*sizeof(int)+5,sizeof(int),MPI_INFO_NULL,comm,&win);
     }
-    //printf("Before Get on %d: \n",rank);
-    //for(i=0;i<n;i++)printf("%d    ", T.tab[i]);
-    //  printf("\n\n");
+
+    MPI_Barrier(MPI_COMM_WORLD);///////////////////////////////barrier///////////////////////////////////////////////////////////////////////////////
 
 
-    MPI_Barrier(MPI_COMM_WORLD);
-    //if(rank!=0)
-    //
-    for(i=BLOCK_LOW(rank-1,4,n);i<BLOCK_HIGH(rank-1,4,n)+1;i++)
-    {
-        MPI_Win_fence(MPI_MODE_NOPRECEDE,win);
-        TD_get(T, i, &T.tab[i]);
-        MPI_Win_fence(MPI_MODE_NOSUCCEED,win);
-    }
-    //}
-    MPI_Barrier(MPI_COMM_WORLD);
-
+    getPartTab(T,BLOCK_LOW(rank-1,4,n),BLOCK_HIGH(rank-1,4,n)+1);
     
+
+    MPI_Barrier(MPI_COMM_WORLD);///////////////////////////////barrier///////////////////////////////////////////////////////////////////////////////
+
     if(rank!=0)
     {
         //#pragma omp parallel
-        //afficherTAB(T.tab+(rank-1)*n/4, n/4);
-        triFusionParallele(T.tab+(rank-1)*n/4, n/4);
-        //}
+        triFusionParallele(T.tab+(rank-1)*(n/4), n/4);
     }
 
-    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Barrier(MPI_COMM_WORLD);///////////////////////////////barrier///////////////////////////////////////////////////////////////////////////////
+
+
     MPI_Win_fence(MPI_MODE_NOPRECEDE,win);
-    for(i=BLOCK_LOW(rank-1,4,n);i<BLOCK_HIGH(rank-1,4,n)+1;i++)
-    {
-        
-        TD_put(T, i, T.tab[i]);
+    if(rank!=0){
+        for(i=BLOCK_LOW(rank-1,4,n);i<BLOCK_HIGH(rank-1,4,n)+1;i++)
+        {
+        //printf("%d ",T.tab[i] );
+            TD_put(T, i, &T.tab[i]);
+
+        }
         
     }
     MPI_Win_fence(MPI_MODE_NOSUCCEED,win);
-    MPI_Barrier(MPI_COMM_WORLD);
-    MPI_Win_fence(MPI_MODE_NOPRECEDE,win);
-    for(i=0;i<n;i++)
-    {
-        
-        TD_get(T, i, &T.tab[i]);
-        
-    }
-    MPI_Win_fence(MPI_MODE_NOSUCCEED,win);
+
+    getPartTab(T,0,n);
     
-    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Barrier(MPI_COMM_WORLD);///////////////////////////////barrier///////////////////////////////////////////////////////////////////////////////
+
     if(rank==0 || rank==1)
     {
         int * U = malloc((n/4+1)*sizeof(int));
@@ -145,88 +128,64 @@ int main (int argc, char **argv)
         //afficherTAB(T.tab, n);
         free(U);
         free(V);
-    }   
-    MPI_Barrier(MPI_COMM_WORLD);
+    }  
+
+    MPI_Barrier(MPI_COMM_WORLD);///////////////////////////////barrier///////////////////////////////////////////////////////////////////////////////
+
+
     MPI_Win_fence(MPI_MODE_NOPRECEDE,win);
     if(rank==0 || rank==1)
     {
         for(i=rank*(n/2);i<(rank+1)*(n/2);i++)
-        {
-            
-            TD_put(T, i, T.tab[i]);
-            
-        }
-        
-    }
-    MPI_Win_fence(MPI_MODE_NOSUCCEED,win);
-    MPI_Barrier(MPI_COMM_WORLD);
-    MPI_Win_fence(MPI_MODE_NOPRECEDE,win);
-    if(rank==2){
-        
-        for(i=0;i<n;i++)
-        {
-
-            TD_get(T, i, &T.tab[i]);
-
+        {           
+            TD_put(T, i, &T.tab[i]);            
         }
 
     }
     MPI_Win_fence(MPI_MODE_NOSUCCEED,win);
 
+    MPI_Barrier(MPI_COMM_WORLD);///////////////////////////////barrier///////////////////////////////////////////////////////////////////////////////
 
-    MPI_Barrier(MPI_COMM_WORLD);
-    if(rank==2){
-        printf("After Get on %d:\n",rank);
-    afficherTAB(T.tab, n);    /* Free up our window */
-    }
-    MPI_Barrier(MPI_COMM_WORLD);
+    getPartTab(T,0,n);
+
+    MPI_Barrier(MPI_COMM_WORLD);///////////////////////////////barrier///////////////////////////////////////////////////////////////////////////////
 
     if(rank==0){
         int * leftTab = malloc((n/2)*sizeof(int));
         int * rightTab = malloc((n/2)*sizeof(int));
-        //int * tableau_final = malloc(n*n*sizeof(int));
-        //*(leftTab +n/2)=INT_MAX-1;
-        //*(rightTab+n/2)=INT_MAX-1;
+
         for(i=0; i<n/2;i++)
         {
             leftTab[i]=T.tab[i];
             rightTab[i]=T.tab[i+(n/2)];
         }
-        //afficherTAB(leftTab, n/2+1);  
-        //afficherTAB(rightTab, n/2+1); 
+
         fusion(leftTab, n/2, rightTab, n/2, T.tab);
-        printf("After fusion:\n");
-        afficherTAB(T.tab, n);
-        //int k;
-/*
-            //printf("size %d\n",INT_MAX );
-        for(k=0; k<n;k++)
-        {
 
-            if (leftTab [ii]<rightTab[jj])
-                T.tab[k]=leftTab [ii++];
-            else 
-                T.tab[k]=rightTab[jj++];
-
-        //printf("t[%d]=%d,  u[%d]=%d,  v[%d]=%d\n", k,T[k],i,U[i],j,V[j]);
-        }
-        afficherTAB(T.tab, n);**/
         free(leftTab);
         free(rightTab);
-        //free(tableau_final);
     }
     
 
-    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Barrier(MPI_COMM_WORLD);///////////////////////////////barrier///////////////////////////////////////////////////////////////////////////////
 
     MPI_Win_free(&win);
-    MPI_Barrier(MPI_COMM_WORLD);
+
+    MPI_Barrier(MPI_COMM_WORLD);///////////////////////////////barrier///////////////////////////////////////////////////////////////////////////////
+
+    if(rank == 0)
+    {
+        TD_afficher(T,0,n);
+        printf("somme = %d\n",TD_somme(T));
+    }
 
     //time += MPI_Wtime();
     //MPI_Reduce (&time, &max_time, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     //if (!rank)
     //  printf ("tri: processus: %d, secondes: %6.2f \n",p, max_time);
-    MPI_Barrier(MPI_COMM_WORLD);
+
+    MPI_Barrier(MPI_COMM_WORLD);///////////////////////////////barrier///////////////////////////////////////////////////////////////////////////////
+    
     free(T.tab);
 
     //Shut down...
@@ -267,9 +226,8 @@ void remplirTABrand(struct tableau T)
     int i;
     srand(time(NULL));
     for(i=0;i<T.taille;i++)
-        T.tab[i] = rand()%T.taille; //limité par unsigned long long int
+        T.tab[i] = rand()%T.taille; 
 }
-
 struct tableau TD_init(int n)
 {
     struct tableau T;
@@ -279,7 +237,7 @@ struct tableau TD_init(int n)
     remplirTABrand(T);
 
     /* Everyone will retrieve from the buffer on root */
-    MPI_Win_create(T.tab,sizeof(int)*n+5,sizeof(int),MPI_INFO_NULL,comm,&win);
+    MPI_Win_create(T.tab,n*sizeof(int),sizeof(int),MPI_INFO_NULL,comm,&win);
 
     printf("Tableau original\n");fflush(stdout);
     TD_afficher(T,0, T.taille);fflush(stdout);
@@ -292,23 +250,18 @@ int TD_get(struct tableau T, int i, int *x)
 {
     if(i < T.taille)
     {
-        //MPI_Win_fence(MPI_MODE_NOPRECEDE,win);
         MPI_Get(x,1,MPI_INT,0,i,1,MPI_INT,win);
-        //MPI_Win_fence(MPI_MODE_NOSUCCEED,win);
-        //printf("x=%d\n", *x);
         return 1;
     }
     else
         return 0;
 }
 
-int TD_put(struct tableau T, int i, int x)
+int TD_put(struct tableau T, int i, int *x)
 {
     if(i < T.taille)
     {
-        int val = x;
-        T.tab[i]=x;
-        MPI_Put(&val,1,MPI_INT,0,i,1,MPI_INT,win);
+        MPI_Put(x,1,MPI_INT,0,i,1,MPI_INT,win);
         return 1;
     }
     else
@@ -340,8 +293,6 @@ void TD_afficher(struct tableau T,int i, int j)
 
 void triFusionParallele(int * TAB, int n)
 {
-
-
     int i;
     int * U = malloc((n/2)*sizeof(int));
     int * V = malloc((n/2)*sizeof(int));
@@ -364,25 +315,20 @@ void triFusionParallele(int * TAB, int n)
     }
     free(U);
     free(V);
-        //afficherTAB(TAB, n);
 }
 void fusion(int * U, int taille_U, int * V, int taille_V , int * T)
 {
-
     int i=0,j=0;
     int k;
     *(U+taille_U)=INT_MAX;
     *(V+taille_V)=INT_MAX;
-    //printf("size %d\n",INT_MAX );
+
     for(k=0; k<(taille_U+taille_V);k++)
     {
-        
         if (U[i]<V[j])
             T[k]=U[i++];
         else 
             T[k]=V[j++];
-
-        //printf("t[%d]=%d,  u[%d]=%d,  v[%d]=%d\n", k,T[k],i,U[i],j,V[j]);
     }
 }
 
@@ -391,8 +337,18 @@ void afficherTAB(int* TAB, int n)
     int j;
     printf("TAB : { ");
     for(j = 0; j < n; j++)
-    {
         printf(" [%d] ",TAB[j]);
-    }
+    
     printf(" }\n");
 }
+
+void getPartTab(struct tableau T, int debut, int fin)
+{
+    MPI_Win_fence(MPI_MODE_NOPRECEDE,win);
+    int i;
+    for(i=debut;i<fin;i++)
+        TD_get(T, i, &T.tab[i]);
+
+    MPI_Win_fence(MPI_MODE_NOSUCCEED,win);
+}
+
