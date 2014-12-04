@@ -26,3 +26,13 @@ pour compiler sur toutes les machines:
 ./compile_dim_linuxmpi.sh
 ```
 
+##Devoir4
+implémentation de l'algorithme de Floyd-Warshall pour déterminer les plus courts chemins dans une matrice d'adjacence avec la librairie OpenCL.
+pour générer une matrice d'adjacence de taille n:
+```bash
+./generateMatrix.exe n
+```
+pour lancer le programme avec la matrice générée ci-dessus:
+```bash
+./tp4.exe graph
+```
