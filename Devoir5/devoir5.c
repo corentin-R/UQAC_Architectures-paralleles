@@ -2,11 +2,14 @@
 #include <stdlib.h>
 #include <math.h>
 #include <time.h>
+#include <limits.h>
 
 
 ////////////déclaration des fonctions//////////////////////////////////////////////////////////////////////
 
-void findCombinaisons(int* liste, int** combinaisons, int taille, int elements);
+long int factorielle(int n);
+
+int** findCombinaisons(int taille, int elements) ;
 void afficherCombinaisons(int** combinaisons, int taille, int elements);
 
 void afficherMatrice(int * mat, int taille);
@@ -24,7 +27,7 @@ int main(int argc, char * argv[])
     size_t datasize;
     int n_elements=10;
     int* pathDistanceMatrix;
-    int* outputMatrix;
+    int nbreCombNonRedondantes = factorielle(n_elements);
 
 
     if(argc == 2)
@@ -32,7 +35,6 @@ int main(int argc, char * argv[])
         printf("fichier lu = %s\n",argv[1]);
         pathDistanceMatrix = readFile(argv[1], &n_elements);
         datasize=sizeof(int)*n_elements*n_elements;
-        outputMatrix = (int *) malloc(datasize);
     }
     else
     {
@@ -43,27 +45,15 @@ int main(int argc, char * argv[])
     afficherMatrice(pathDistanceMatrix, n_elements);
 
 
-    //déclaration des variables
-    int* liste = NULL;
-    int** combinaisons = NULL;
-    int i = 0;
-    int j = 0;
-    int n = n_elements;
-    int nbreComb = 0;
-    int tailleListe = n;
+    int tailleListe = n_elements;
+    int nbreComb = pow(tailleListe, n_elements);
 
-    //allocation des pointeurs
-    liste = (int*)malloc(sizeof(int)*tailleListe);
-    for (i = 0 ; i < tailleListe ; i++) 
+
+    int** combinaisons = (int**)malloc(sizeof(int*)*nbreComb);
+    for (int i = 0 ; i < nbreComb ; i++) 
     {
-        liste[i] = i;
-    } 
-    nbreComb = pow(tailleListe, n);
-    combinaisons = (int**)malloc(sizeof(int*)*nbreComb);
-    for (i = 0 ; i < nbreComb ; i++) 
-    {
-        combinaisons[i] = (int*)malloc(sizeof(int)*n);
-        for (j = 0 ; j < n ; j++)
+        combinaisons[i] = (int*)malloc(sizeof(int)*n_elements);
+        for (int j = 0 ; j < n_elements ; j++)
         {
             combinaisons[i][j] = j;
         }
@@ -73,56 +63,167 @@ int main(int argc, char * argv[])
     printf("\n--------\n");
 
     //algo
+    printf("nbreCombNonRedondantes %d\n", factorielle(n_elements));
 
-    findCombinaisons(liste, combinaisons, tailleListe, n); 
+    combinaisons = findCombinaisons(tailleListe, n_elements); 
 
-    afficherCombinaisons(combinaisons, tailleListe, n);
+    nbreCombNonRedondantes = factorielle(n_elements);
+
+    //afficherCombinaisons(combinaisons, nbreCombNonRedondantes, n_elements);
+
 
     printf("\n--------\n");
 
-    afficherOneCombinaison(combinaisons[5],n_elements);
-    printf("%d\n",testOneCycle(combinaisons[5], pathDistanceMatrix, n_elements));
+    int resultatsCycles[nbreCombNonRedondantes];
+    for(int i= 0; i< nbreCombNonRedondantes; i++)
+    {
+      //  afficherOneCombinaison(combinaisons[i],n_elements);
+        resultatsCycles[i]=testOneCycle(combinaisons[i], pathDistanceMatrix, n_elements);
+       // printf("%d\n",resultatsCycles[i]);
+    }
+
+    //recherche du min
+    int min = INT_MAX;
+    int indiceMin=0;
+    for(int i= 0; i< nbreCombNonRedondantes; i++)
+    {
+        if(resultatsCycles[i]<=min)
+        {
+            min=resultatsCycles[i];
+            indiceMin=i;
+        }
+    }
+    printf("cycle minimum:\n");
+    afficherOneCombinaison(combinaisons[indiceMin], n_elements);
+    printf("taille minimale %d\n", min);
+
+
+
 
     //libération des pointeurs
-    for(i = 0 ; i < nbreComb ; i++) 
+    for(int i = 0 ; i < n_elements ; i++) 
         free(combinaisons[i]);
-
     free(combinaisons);
-    free(liste);
     return 0;
 }	
 
 ////////////développement des fonctions//////////////////////////////////////////////////////////////////////
 
-
-void findCombinaisons(int* liste, int** combinaisons, int taille, int elements) 
+long int factorielle(int n)
 {
+    int i=0;
+    long int temp=n;
+    while(i<=n-2)
+    {
+        i=i+1;
+        temp=temp*(n-i);
+    }
+    return temp;
+}
+
+int** findCombinaisons(int taille, int elements) 
+{
+    //déclaration des variables
     int i = 0;
     int j = 0;
     int nbreComb = pow(taille, elements);
     int indiceActuel = 0;
+    int nbreCombNonRedondantes;
+    
+    //allocation des pointeurs    
+    nbreComb = pow(taille, elements);
+    int** allCombinaisons = (int**)malloc(sizeof(int*)*nbreComb);
+    for (i = 0 ; i < nbreComb ; i++) 
+    {
+        allCombinaisons[i] = (int*)malloc(sizeof(int)*elements);
+        for (j = 0 ; j < elements ; j++)
+        {
+            allCombinaisons[i][j] = j;
+        }
+    }
+
+
+    int* liste = (int*)malloc(sizeof(int)*taille);
+    for (i = 0 ; i < taille; i++) 
+    {
+        liste[i] = i;
+    } 
 
     for (j = 0 ; j < elements ; j++) 
     {
         indiceActuel = 0;
         for (i = 0 ; i < nbreComb ; i++) 
         {
-            combinaisons[i][elements - j - 1] = liste[indiceActuel];
+            allCombinaisons[i][elements - j - 1] = liste[indiceActuel];
             if ((i+1) % (int)pow(taille, j) == 0)
                 indiceActuel++;
             if (indiceActuel >= taille)
                 indiceActuel = 0;
         }
     }
+
+    int** combinaisons = (int**)malloc(sizeof(int*)*nbreComb);
+    for (i = 0 ; i < nbreComb ; i++) 
+    {
+        combinaisons[i] = (int*)malloc(sizeof(int)*elements);
+        for (j = 0 ; j < elements+1 ; j++)
+        {
+            combinaisons[i][j] = j;
+        }
+    }
+   // afficherCombinaisons(allCombinaisons, taille, elements);
+
+    //vérification
+    int tabVerif[elements];
+    nbreCombNonRedondantes=0;
+    int cpt=0;
+    for (i = 0 ; i < nbreComb ; i++) 
+    {
+
+        for (j = 0 ; j < elements ; j++) 
+            tabVerif[j]=0;             
+
+        for (j = 0 ; j < elements ; j++) 
+            tabVerif[allCombinaisons[i][j]]=1;
+
+
+       // printf("tab verif %d =", i);
+        cpt=0;
+        for (int jj = 0 ; jj< elements ; jj++) 
+        {
+            //printf(" tab[%d]=%d", allCombinaisons[i][jj], tabVerif[allCombinaisons[i][jj]]);
+          //  printf(" %d", tabVerif[jj]);
+            if(tabVerif[jj]==0)
+            {
+                cpt++;                
+            }
+        }
+       //printf(" \n\n");
+        if(cpt==0){
+
+            combinaisons[(nbreCombNonRedondantes)]=allCombinaisons[i];
+           // combinaisons[i][0]=0;
+          /*  printf("%d =", i);
+            for (int k = 0 ; k < elements ; k++) 
+            {
+                printf(" %d", combinaisons[i][k]);
+            }
+            printf("\n");
+            */
+            (nbreCombNonRedondantes)++;
+        }
+        
+    }
+    return combinaisons;
 }
 
 void afficherCombinaisons(int** combinaisons, int taille, int elements)
 {
-    int nbreComb = pow(taille, elements);
+   //int nbreComb = pow(taille, elements);
     int i, j;
-    for (i = 0 ; i < nbreComb ; i++) 
+    for (i = 0 ; i < taille ; i++) 
     {
-        printf("%i :\t", i+1);
+        printf("%i :\t", i);
         for (j = 0 ; j < elements; j++) 
         {
             printf("%i\t", combinaisons[i][j]);
@@ -202,7 +303,7 @@ int testOneCycle(int * combinaison, int * pathDistanceMatrix, int n)
     for(int j=0; j<n-1;j++)
     {
         indice = combinaison[j]*n+combinaison[j+1];
-        printf("temp[%d]=%d\n",indice,pathDistanceMatrix[indice]);
+        //printf("temp[%d]=%d\n",indice,pathDistanceMatrix[indice]);
         somme+=pathDistanceMatrix[indice];
     }
 
@@ -211,7 +312,7 @@ int testOneCycle(int * combinaison, int * pathDistanceMatrix, int n)
 
 void afficherOneCombinaison(int* combinaison, int taille)
 {
-    printf("combinaison=\t");
+    printf("combinaison= ");
     for(int j=0; j<taille;j++)
     {
         printf(" %d", combinaison[j]);
