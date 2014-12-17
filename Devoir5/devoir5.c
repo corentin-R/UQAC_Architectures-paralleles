@@ -23,6 +23,8 @@
 
 ////////////déclaration des fonctions//////////////////////////////////////////////////////////////////////
 
+void print(const int *v, const int size);
+void permutation(int *Value, int N, int k, int ** conb);
 long int factorielle(int n);
 
 int** findCombinaisons(int taille, int elements) ;
@@ -49,7 +51,7 @@ int main(int argc, char * argv[])
     MPI_Init(&argc,&argv);
     MPI_Comm_rank(MPI_COMM_WORLD,&rank);
     MPI_Comm_size(MPI_COMM_WORLD, &p); 
-    printf("\n");
+//    printf("\n");
 
     time_t t1, t2;
  
@@ -59,7 +61,6 @@ int main(int argc, char * argv[])
       perror("time");
       exit(EXIT_FAILURE);
    }
-  // (void)printf("début %ld secondes, %s\n", t1, ctime(&t1));
 
     size_t datasize;
     int n_elements=10;
@@ -70,7 +71,7 @@ int main(int argc, char * argv[])
     int* tabIndicesMin= malloc(p*sizeof(int));
     int* tabMin= malloc(p*sizeof(int));
 
-
+///////////////////////1- Lecture et stockage du graphe////////////////////////////////////////////////////////////////////////////////////////////  
     if (rank==0)
     {
         if(argc == 2)
@@ -98,12 +99,14 @@ int main(int argc, char * argv[])
         //algo
         printf("nbre combinaisons Non Redondantes = %d (%d!)\n", factorielle(n_elements), n_elements);
 
+///////////////////////2- Création des combinaisons à tester////////////////////////////////////////////////////////////////////////////////////
         combinaisons = findCombinaisons(n_elements, n_elements); 
     }
 
+
+///////////////////////3- Commuication avec les différents noeuds////////////////////////////////////////////////////////////////////////////////////
     MPI_Bcast( &n_elements, 1, MPI_INT, 0, MPI_COMM_WORLD );
-    MPI_Bcast( &nbreCombNonRedondantes, 1, MPI_INT, 0, MPI_COMM_WORLD );
-    //MPI_Barrier(MPI_COMM_WORLD);
+    nbreCombNonRedondantes = factorielle(n_elements);
 
     if(rank != 0)
     {
@@ -123,7 +126,8 @@ int main(int argc, char * argv[])
     //  afficherMatrice(pathDistanceMatrix, n_elements);
     //  printf("[%d] tnbreCombNonRedondantes=%d n_elements=%d \n",rank, nbreCombNonRedondantes, n_elements);
 
-   // printf("\n--------\n");
+
+ /////////////////////4- Test des combinaison////////////////////////////////////////////////////////////////////////////////////////////////
 
     int tailleBlock=nbreCombNonRedondantes/p;
     int debut = (nbreCombNonRedondantes/p)*(rank-1);
@@ -143,11 +147,9 @@ int main(int argc, char * argv[])
 
     #pragma omp parallel for
     for(int i= debut; i< fin; i++)
-    {
-       // afficherOneCombinaison(combinaisons[i], n_elements);
-      //  printf("i=%d\n",i );
         resultatsCycles[i]=testOneCycle(combinaisons[i], pathDistanceMatrix, n_elements);
-    }
+    
+/////////////////////5- Recherche du plus petit cycle///////////////////////////////////////////////////////////////////////////////////////
 
     int indiceMinNoeud;
     tabMin[rank]=min(resultatsCycles+debut,tailleBlock, &indiceMinNoeud);
@@ -160,8 +162,7 @@ int main(int argc, char * argv[])
     printf("\n");
     printf(ANSI_COLOR_RESET);
 
-
-   // MPI_Barrier(MPI_COMM_WORLD);
+////////////////////6- Communication du plus petit cycle////////////////////////////////////////////////////////////////////////////////////
 
     for(int o=0; o<p; o++)         
     {
@@ -169,18 +170,19 @@ int main(int argc, char * argv[])
         MPI_Bcast( &tabMin[o], 1, MPI_INT, o, MPI_COMM_WORLD );
     }
 
-   // for(int j=0; j<p; j++)         
-   // {
-    //    printf("------------->tabIndicesMin[%d]=%d\n",j, tabIndicesMin[j];  );
-    //}
 
     MPI_Barrier(MPI_COMM_WORLD);
 
     if (rank==0)
     {
+///////////////////7- Recherche du plus petit cycle parmis les différents noeuds////////////////////////////////////////////////////////////
 
         int indiceMinGlobal;
         int minGlobal =  min(tabMin,p, &indiceMinGlobal);
+
+
+/////////////////////8- affichage du plus petit cycle et du temps d'éxecution///////////////////////////////////////////////////////////////
+
         printf(ANSI_COLOR_GREEN);
         printf(ANSI_STYLE_BOLD);
         printf("cycle minimum global: chemin n°%d taille=> %d\n", tabIndicesMin[indiceMinGlobal], minGlobal);
@@ -196,7 +198,6 @@ int main(int argc, char * argv[])
         
     }
 
-
     //libération des pointeurs
     for(int i = 0 ; i < nbreCombNonRedondantes ; i++) 
         free(combinaisons[i]);
@@ -205,13 +206,50 @@ int main(int argc, char * argv[])
     //Shut down...
     MPI_Finalize();
 
-
-
-
     return 0;
 }	
 
 ////////////développement des fonctions//////////////////////////////////////////////////////////////////////
+
+
+ //http://forum.hardware.fr/hfr/Programmation/C/permutation-algorithme-sujet_112719_1.htm
+void print(const int *v, const int size)
+{
+      if (v != 0) {
+        for (int i = 0; i < size; i++) {
+          printf("%4d", v[i] );
+        }
+        printf("\n" );
+      }
+} 
+
+
+void permutation(int *Value, int N, int k, int ** conb)
+{
+      static int level = -1;
+      static int cpt=0;
+      level = level+1;
+      Value[k] = level;
+      if (level == N){
+        #pragma omp for
+        for (int i = 0; i < N; i++) 
+          conb[cpt][i] = Value[i]-1;
+          
+         // print(conb[cpt], N);
+        cpt++;
+      }
+        
+      else
+        #pragma omp for
+        for (int i = 0; i < N; i++)
+          if (Value[i] == 0)
+            permutation(Value, N, i, conb);
+      level = level-1;
+      Value[k] = 0;
+}
+
+
+ 
 
 long int factorielle(int n)
 {
@@ -229,93 +267,25 @@ int** findCombinaisons(int taille, int elements)
 {
     //déclaration des variables
 
-    int i = 0;
-    int j = 0;
-    int nbreComb = pow(taille, elements);
-    int indiceActuel = 0;
-    int nbreCombNonRedondantes;
+    const int n_elements = elements;
+      int nbreCombNonRedondantes = factorielle(n_elements);
 
-    //allocation des pointeurs 
+      int ** combinaisons = (int**)malloc(sizeof(int*)*nbreCombNonRedondantes);
+        for (int i = 0 ; i < nbreCombNonRedondantes ; i++) 
+            combinaisons[i] = (int*)malloc(sizeof(int)*n_elements);
 
-    nbreComb = pow(taille, elements);
-    int** allCombinaisons = (int**)malloc(sizeof(int*)*nbreComb);
-    for (i = 0 ; i < nbreComb ; i++) 
-    {
-        allCombinaisons[i] = (int*)malloc(sizeof(int)*elements);
-        for (j = 0 ; j < elements ; j++)
-        {
-            allCombinaisons[i][j] = j;
-        }
-    }
+      int Value[n_elements];
+      for (int i = 0; i < n_elements; i++) {
+        Value[i] = 0;
+      }
+      permutation(Value, n_elements, 0, combinaisons);
 
-
-    int* liste = (int*)malloc(sizeof(int)*taille);
-    for (i = 0 ; i < taille; i++) 
-    {
-        liste[i] = i;
-    } 
-
-    for (j = 0 ; j < elements ; j++) 
-    {
-        indiceActuel = 0;
-        for (i = 0 ; i < nbreComb ; i++) 
-        {
-            allCombinaisons[i][elements - j - 1] = liste[indiceActuel];
-            if ((i+1) % (int)pow(taille, j) == 0)
-                indiceActuel++;
-            if (indiceActuel >= taille)
-                indiceActuel = 0;
-        }
-    }
-
-    int** combinaisons = (int**)malloc(sizeof(int*)*nbreComb);
-    for (i = 0 ; i < nbreComb ; i++) 
-    {
-        combinaisons[i] = (int*)malloc(sizeof(int)*elements);
-        for (j = 0 ; j < elements+1 ; j++)
-        {
-            combinaisons[i][j] = j;
-        }
-    }
-
-    // afficherCombinaisons(allCombinaisons, taille, elements);
-
-    //vérification
-
-    int tabVerif[elements];
-    nbreCombNonRedondantes=0;
-    int cpt=0;
-    for (i = 0 ; i < nbreComb ; i++) 
-    {
-
-        for (j = 0 ; j < elements ; j++) 
-            tabVerif[j]=0;             
-
-        for (j = 0 ; j < elements ; j++) 
-            tabVerif[allCombinaisons[i][j]]=1;
-
-
-        cpt=0;
-        for (int jj = 0 ; jj< elements ; jj++) 
-            if(tabVerif[jj]==0)
-                cpt++;                
-
-            if(cpt==0)
-            {
-                combinaisons[(nbreCombNonRedondantes)]=allCombinaisons[i];
-                (nbreCombNonRedondantes)++;
-            }        
-        }
-
-        for(int i = 0 ; i < elements ; i++) 
-            free(allCombinaisons[i]);
-        free(allCombinaisons);
-        free(liste);
+     // afficherCombinaisons(combinaisons, nbreCombNonRedondantes, n_elements);
 
         return combinaisons;
-    }
+}
 
-    void afficherCombinaisons(int** combinaisons, int taille, int elements)
+void afficherCombinaisons(int** combinaisons, int taille, int elements)
     {
 
      int i, j;
@@ -328,6 +298,7 @@ int** findCombinaisons(int taille, int elements)
       printf("\n");
   }
 }
+
 
 
 int* readFile(char* pathFile, int* n_elements)
@@ -364,7 +335,7 @@ void afficherMatrice(int * mat, int taille)
         for(int i=0;i<taille;i++)
         {
             for(int j=0;j<taille;j++)
-                printf("%d ", mat[i+taille*j]);
+                printf("%4d ", mat[i+taille*j]);
 
             printf("\n");
         }
