@@ -63,7 +63,7 @@ int main(int argc, char * argv[])
    }
 
     size_t datasize;
-    int n_elements=10;
+    int n_elements=4;
     int* pathDistanceMatrix;
     int nbreCombNonRedondantes;
     int nbreCombMax= pow(n_elements, n_elements);
@@ -76,7 +76,7 @@ int main(int argc, char * argv[])
     {
         if(argc == 2)
         {
-            printf("fichier lu = %s\n",argv[1]);
+            printf("fichier lu = %s\n attention la taille de la matrice ne doit pas être supérieure à 9\n",argv[1]);
             pathDistanceMatrix = malloc(sizeof(int)*n_elements*n_elements);
             pathDistanceMatrix = readFile(argv[1], &n_elements);
             datasize=sizeof(int)*n_elements*n_elements;
@@ -84,6 +84,7 @@ int main(int argc, char * argv[])
         else
         {
             datasize = sizeof(int)*n_elements*n_elements;
+             pathDistanceMatrix = (int *) malloc(sizeof(int)*n_elements*n_elements);
             generateRandomMatrice(pathDistanceMatrix, n_elements);
         }
 
@@ -347,7 +348,7 @@ void afficherMatrice(int * mat, int taille)
 void generateRandomMatrice(int * pathDistanceMatrix, int n_elements)
 {
     // Compute the size of the data    
-    pathDistanceMatrix = (int *) malloc(sizeof(int)*n_elements*n_elements);
+   
     // random initialisation of input
     srand((int)time(NULL));
     for(int i=0;i<n_elements;i++)
@@ -355,9 +356,9 @@ void generateRandomMatrice(int * pathDistanceMatrix, int n_elements)
         for(int j=0;j<n_elements;j++)
         {
             if(i==j)
-                pathDistanceMatrix[i+n_elements*j] = 0;
+                pathDistanceMatrix[i*n_elements+j] = 0;
             else
-                pathDistanceMatrix[i+n_elements*j] = rand()%20;
+                pathDistanceMatrix[i*n_elements+j] = rand()%20;
         }
     }
 }

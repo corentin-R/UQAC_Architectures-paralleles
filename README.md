@@ -1,5 +1,6 @@
 #Architectures Parallèles
 liste des différents devoirs effetuées durant ce cours avec Adrien Cambillau.
+[lien vers le site du cours](http://www.uqac.ca/flemieux/INF856/index.html)
 
 ##Devoir 1
 Calcul de la suite de Fibonacci en langage C avec et sans threads, utilisation de la librairie "pthread".
@@ -36,3 +37,8 @@ pour lancer le programme avec la matrice générée ci-dessus:
 ```bash
 ./tp4.exe graph
 ```
+
+##Devoir5
+ L'objectif consiste  trouver un cycle hamiltonien de
+longueur minimale dans un graph orienté (problme du commis voyageur) en utilisant OpenMP et MPI.
+
